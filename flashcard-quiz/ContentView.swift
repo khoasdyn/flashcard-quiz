@@ -14,32 +14,11 @@ struct ContentView: View {
     
     @State private var currentIndex = 0
     @State private var isFlipped = false
-    
-    // Demo data pool
-    private let demoData: [(word: String, definition: String)] = [
-        ("Ephemeral", "Lasting for a very short time"),
-        ("Ubiquitous", "Present, appearing, or found everywhere"),
-        ("Pragmatic", "Dealing with things sensibly and realistically"),
-        ("Eloquent", "Fluent or persuasive in speaking or writing"),
-        ("Resilient", "Able to recover quickly from difficulties"),
-        ("Ambiguous", "Open to more than one interpretation"),
-        ("Meticulous", "Showing great attention to detail"),
-        ("Candid", "Truthful and straightforward"),
-        ("Tenacious", "Holding firmly to something"),
-        ("Inevitable", "Certain to happen; unavoidable")
-    ]
+    @State private var showingAddSheet = false
     
     private var currentCard: Flashcard? {
         guard cards.indices.contains(currentIndex) else { return nil }
         return cards[currentIndex]
-    }
-    
-    private var nextDemoIndex: Int {
-        cards.count
-    }
-    
-    private var canAddMore: Bool {
-        nextDemoIndex < demoData.count
     }
     
     var body: some View {
@@ -62,6 +41,11 @@ struct ContentView: View {
             actionButtons
         }
         .padding()
+        .sheet(isPresented: $showingAddSheet) {
+            AddCardView { word, definition in
+                addCard(word: word, definition: definition)
+            }
+        }
     }
     
     // MARK: - Subviews
@@ -109,12 +93,11 @@ struct ContentView: View {
     private var actionButtons: some View {
         HStack(spacing: 20) {
             Button {
-                addCard()
+                showingAddSheet = true
             } label: {
                 Label("Add", systemImage: "plus")
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!canAddMore)
             
             Button(role: .destructive) {
                 deleteCurrentCard()
@@ -138,14 +121,11 @@ struct ContentView: View {
         currentIndex += 1
     }
     
-    private func addCard() {
-        guard canAddMore else { return }
-        
-        let demo = demoData[nextDemoIndex]
-        let newCard = Flashcard(word: demo.word, definition: demo.definition)
+    private func addCard(word: String, definition: String) {
+        let newCard = Flashcard(word: word, definition: definition)
         modelContext.insert(newCard)
         
-        currentIndex = cards.count // Will be count after insert
+        currentIndex = cards.count
         isFlipped = false
     }
     
