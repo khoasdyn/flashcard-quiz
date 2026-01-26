@@ -12,12 +12,17 @@ struct AddCardView: View {
     
     @State private var word = ""
     @State private var definition = ""
+    @State private var generator = DefinitionGenerator()
     
     var onSave: (String, String) -> Void
     
     private var canSave: Bool {
         !word.trimmingCharacters(in: .whitespaces).isEmpty &&
         !definition.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    private var canGenerate: Bool {
+        !word.trimmingCharacters(in: .whitespaces).isEmpty && !generator.isGenerating
     }
     
     var body: some View {
@@ -27,9 +32,35 @@ struct AddCardView: View {
                     TextField("Word", text: $word)
                 }
                 
-                Section("Back") {
+                Section {
                     TextField("Definition", text: $definition, axis: .vertical)
                         .lineLimit(3...6)
+                    
+                    Button {
+                        Task {
+                            await generator.generateDefinition(for: word)
+                            if let generated = generator.generatedDefinition {
+                                definition = generated
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "sparkles")
+                            Text(generator.isGenerating ? "Generating..." : "AI Generate")
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .disabled(!canGenerate)
+                    
+                    if let error = generator.error {
+                        Text(error.localizedDescription)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                } header: {
+                    Text("Back")
+                } footer: {
+                    Text("Type a definition manually or use AI to generate one based on the word.")
                 }
             }
             .navigationTitle("New Card")
@@ -49,6 +80,9 @@ struct AddCardView: View {
                     }
                     .disabled(!canSave)
                 }
+            }
+            .onAppear {
+                generator.prewarm()
             }
         }
     }
