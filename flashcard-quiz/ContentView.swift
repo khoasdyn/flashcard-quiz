@@ -17,26 +17,16 @@ struct ContentView: View {
     @State private var showingAddSheet = false
     
     private var currentCard: Flashcard? {
-        guard cards.indices.contains(currentIndex) else { return nil }
-        return cards[currentIndex]
+        cards.indices.contains(currentIndex) ? cards[currentIndex] : nil
     }
+    
+    private var isFirstCard: Bool { currentIndex == 0 }
+    private var isLastCard: Bool { currentIndex >= cards.count - 1 }
     
     var body: some View {
         VStack(spacing: 24) {
             cardCounter
-            
-            if let card = currentCard {
-                FlashcardView(card: card, isFlipped: isFlipped)
-                    .id(card.id)
-                    .onTapGesture {
-                        withAnimation {
-                            isFlipped.toggle()
-                        }
-                    }
-            } else {
-                emptyState
-            }
-            
+            cardDisplay
             navigationButtons
             actionButtons
         }
@@ -50,20 +40,34 @@ struct ContentView: View {
     
     // MARK: - Subviews
     
+    @ViewBuilder
     private var cardCounter: some View {
-        Group {
-            if !cards.isEmpty {
-                Text("\(currentIndex + 1) / \(cards.count)")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-            }
+        if !cards.isEmpty {
+            Text("\(currentIndex + 1) / \(cards.count)")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+        }
+    }
+    
+    @ViewBuilder
+    private var cardDisplay: some View {
+        if let card = currentCard {
+            FlashcardView(card: card, isFlipped: isFlipped)
+                .id(card.id)
+                .onTapGesture {
+                    withAnimation {
+                        isFlipped.toggle()
+                    }
+                }
+        } else {
+            emptyState
         }
     }
     
     private var emptyState: some View {
         RoundedRectangle(cornerRadius: 16)
             .fill(.gray.opacity(0.2))
-            .frame(width: 300, height: 200)
+            .frame(width: FlashcardView.cardWidth, height: FlashcardView.cardHeight)
             .overlay {
                 Text("No cards yet")
                     .foregroundStyle(.secondary)
@@ -78,7 +82,7 @@ struct ContentView: View {
                 Image(systemName: "chevron.left.circle.fill")
                     .font(.largeTitle)
             }
-            .disabled(currentIndex == 0)
+            .disabled(isFirstCard)
             
             Button {
                 goToNext()
@@ -86,7 +90,7 @@ struct ContentView: View {
                 Image(systemName: "chevron.right.circle.fill")
                     .font(.largeTitle)
             }
-            .disabled(currentIndex >= cards.count - 1)
+            .disabled(isLastCard)
         }
     }
     
@@ -124,14 +128,12 @@ struct ContentView: View {
     private func addCard(word: String, definition: String) {
         let newCard = Flashcard(word: word, definition: definition)
         modelContext.insert(newCard)
-        
         currentIndex = cards.count
         isFlipped = false
     }
     
     private func deleteCurrentCard() {
         guard let card = currentCard else { return }
-        
         modelContext.delete(card)
         
         if currentIndex >= cards.count - 1 && currentIndex > 0 {

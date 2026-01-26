@@ -8,6 +8,10 @@
 import SwiftUI
 
 struct FlashcardView: View, Animatable {
+    
+    static let cardWidth: CGFloat = 340
+    static let cardHeight: CGFloat = 240
+    
     let card: Flashcard
     var rotation: Double
     
@@ -16,9 +20,7 @@ struct FlashcardView: View, Animatable {
         set { rotation = newValue }
     }
     
-    private var showingFront: Bool {
-        rotation < 90
-    }
+    private var showingFront: Bool { rotation < 90 }
     
     init(card: Flashcard, isFlipped: Bool) {
         self.card = card
@@ -30,15 +32,13 @@ struct FlashcardView: View, Animatable {
             frontSide
             backSide
         }
-        .frame(width: 340, height: 400)
+        .frame(width: Self.cardWidth, height: Self.cardHeight)
         .shadow(radius: 5)
         .rotation3DEffect(.degrees(rotation), axis: (0, 1, 0))
     }
     
-    // MARK: - Card sides
-    
     private var frontSide: some View {
-        cardBase
+        RoundedRectangle(cornerRadius: 16)
             .fill(.indigo.gradient)
             .overlay {
                 Text(card.word)
@@ -52,7 +52,7 @@ struct FlashcardView: View, Animatable {
     }
     
     private var backSide: some View {
-        cardBase
+        RoundedRectangle(cornerRadius: 16)
             .fill(.blue.gradient)
             .overlay {
                 Text(card.definition)
@@ -63,10 +63,6 @@ struct FlashcardView: View, Animatable {
             }
             .rotation3DEffect(.degrees(180), axis: (0, 1, 0))
             .opacity(showingFront ? 0 : 1)
-    }
-    
-    private var cardBase: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 16)
     }
 }
 

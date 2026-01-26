@@ -20,11 +20,10 @@ final class DefinitionGenerator {
     init() {
         let instructions = Instructions {
             "You are a helpful vocabulary assistant."
-            "Provide detailed, beginner-friendly definitions."
-            "Use 2-3 sentences that explain meaning, context, and usage."
-            "Avoid using complex words in your definitions."
+            "Provide clear, beginner-friendly definitions in exactly 2 sentences."
+            "First sentence explains the meaning, second shows common usage."
+            "Avoid complex words in your definitions."
         }
-        
         self.session = LanguageModelSession(tools: [], instructions: instructions)
     }
     
@@ -32,7 +31,6 @@ final class DefinitionGenerator {
         generatedDefinition = nil
         error = nil
         isGenerating = true
-        
         defer { isGenerating = false }
         
         do {
