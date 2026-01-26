@@ -6,9 +6,17 @@
 //
 
 import Foundation
+import SwiftData
 
-struct Flashcard: Identifiable {
-    let id = UUID()
-    let word: String
-    let definition: String
+@Model
+class Flashcard {
+    var word: String
+    var definition: String
+    var createdAt: Date
+    
+    init(word: String, definition: String) {
+        self.word = word
+        self.definition = definition
+        self.createdAt = Date()
+    }
 }
