@@ -30,7 +30,7 @@ struct FlashcardView: View, Animatable {
             frontSide
             backSide
         }
-        .frame(width: 300, height: 200)
+        .frame(width: 340, height: 240)
         .shadow(radius: 5)
         .rotation3DEffect(.degrees(rotation), axis: (0, 1, 0))
     }
