@@ -49,18 +49,13 @@ struct CardFormView: View {
                                     .foregroundStyle(.secondary)
                             } else {
                                 WordTypeBadge(wordType: wordType)
-                                if let wordType {
-                                    Text(wordType.rawValue.capitalized)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
                             }
                             Spacer()
                         }
                     }
                 }
                 
-                Section {
+                Section("Definition") {
                     TextField("Definition", text: $definition, axis: .vertical)
                         .lineLimit(3...6)
                     
@@ -86,8 +81,6 @@ struct CardFormView: View {
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
-                } header: {
-                    Text("Definition")
                 }
             }
             .navigationTitle(isEditing ? "Edit Card" : "New Card")

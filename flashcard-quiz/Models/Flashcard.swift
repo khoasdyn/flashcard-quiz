@@ -32,21 +32,6 @@ class Flashcard {
 enum WordType: String, CaseIterable {
     case noun, verb, adjective, adverb, preposition, conjunction, pronoun, interjection, determiner, phrase
     
-    var abbreviation: String {
-        switch self {
-        case .noun: "n"
-        case .verb: "v"
-        case .adjective: "adj"
-        case .adverb: "adv"
-        case .preposition: "prep"
-        case .conjunction: "conj"
-        case .pronoun: "pron"
-        case .interjection: "interj"
-        case .determiner: "det"
-        case .phrase: "phr"
-        }
-    }
-    
     var color: Color {
         switch self {
         case .noun: .blue

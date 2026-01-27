@@ -12,7 +12,7 @@ struct WordTypeBadge: View {
     
     var body: some View {
         if let wordType {
-            Text(wordType.abbreviation.uppercased())
+            Text(wordType.rawValue.capitalized)
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .foregroundStyle(.white)
