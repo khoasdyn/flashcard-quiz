@@ -18,7 +18,8 @@ flashcard-quiz/
 │   └── GeneratedWordType.swift   # FoundationModels schema for word classification
 ├── Views/
 │   ├── FlashcardView.swift       # Animated flip card component
-│   └── AddCardView.swift         # Card creation sheet with AI generation
+│   ├── AddCardView.swift         # Card creation sheet with AI generation
+│   └── EditCardView.swift        # Card editing sheet with AI regeneration
 ├── Services/
 │   ├── DefinitionGenerator.swift # AI definition generator
 │   └── WordTypeGenerator.swift   # AI word type classifier
@@ -128,6 +129,13 @@ func addCard(word: String, definition: String, wordType: String?, abbreviation: 
         wordTypeAbbreviation: abbreviation
     )
     modelContext.insert(newCard)
+}
+
+func updateCard(_ card: Flashcard, word: String, definition: String, wordType: String?, abbreviation: String?) {
+    card.word = word
+    card.definition = definition
+    card.wordType = wordType
+    card.wordTypeAbbreviation = abbreviation
 }
 
 func deleteCard(_ card: Flashcard) {
@@ -278,7 +286,7 @@ final class WordTypeGenerator {
 
 ### 6. Running multiple async tasks in parallel
 
-In AddCardView, the generate button triggers both definition and word type generation simultaneously using Swift's structured concurrency.
+In AddCardView and EditCardView, the generate button triggers both definition and word type generation simultaneously using Swift's structured concurrency.
 
 ```swift
 Button {
@@ -294,7 +302,33 @@ Button {
 
 The `async let` syntax starts both tasks immediately without waiting. The `await` on the tuple ensures both complete before continuing. This is faster than sequential execution since both AI requests run in parallel.
 
-### 7. Displaying persisted word type with fallback
+### 7. Initializing State from external data
+
+EditCardView receives a Flashcard and must pre-populate its form fields. Use `State(initialValue:)` in the initializer to set up @State properties from the card's existing values.
+
+```swift
+struct EditCardView: View {
+    let card: Flashcard
+    
+    @State private var word: String
+    @State private var definition: String
+    @State private var wordType: String?
+    @State private var wordTypeAbbreviation: String?
+    
+    init(card: Flashcard, onSave: @escaping (String, String, String?, String?) -> Void) {
+        self.card = card
+        self.onSave = onSave
+        _word = State(initialValue: card.word)
+        _definition = State(initialValue: card.definition)
+        _wordType = State(initialValue: card.wordType)
+        _wordTypeAbbreviation = State(initialValue: card.wordTypeAbbreviation)
+    }
+}
+```
+
+The underscore prefix (`_word`) accesses the State wrapper itself rather than its wrapped value, allowing you to initialize it with a starting value. This pattern is necessary because @State properties cannot be assigned directly in an initializer.
+
+### 8. Displaying persisted word type with fallback
 
 In ContentView, the badge displays the stored word type from the Flashcard model. Cards created before word type classification was added show "N/A" instead.
 
@@ -326,7 +360,7 @@ private var wordTypeBadge: some View {
 }
 ```
 
-### 8. View ID for state reset
+### 9. View ID for state reset
 
 When navigating between cards, use `.id()` modifier to force view recreation. This resets the FlashcardView animation state.
 
@@ -335,7 +369,7 @@ FlashcardView(card: card, isFlipped: isFlipped)
     .id(card.id) // Forces new view instance when card changes
 ```
 
-### 9. Static dimensions for consistency
+### 10. Static dimensions for consistency
 
 Define card dimensions as static constants to share between FlashcardView and empty state.
 
@@ -357,6 +391,7 @@ private var emptyState: some View {
 - Tap card to flip with smooth 3D animation
 - Navigate between cards with arrow buttons
 - Add new cards via sheet with form
+- Edit existing cards with pre-populated form
 - AI-generate definitions using on-device model
 - Auto-classify word types (noun, verb, adj, etc.) with colored badge
 - Word type persists with each card and displays in ContentView

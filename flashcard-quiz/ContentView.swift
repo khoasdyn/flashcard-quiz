@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var currentIndex = 0
     @State private var isFlipped = false
     @State private var showingAddSheet = false
+    @State private var showingEditSheet = false
     
     private var currentCard: Flashcard? {
         cards.indices.contains(currentIndex) ? cards[currentIndex] : nil
@@ -35,6 +36,13 @@ struct ContentView: View {
         .sheet(isPresented: $showingAddSheet) {
             AddCardView { word, definition, wordType, abbreviation in
                 addCard(word: word, definition: definition, wordType: wordType, abbreviation: abbreviation)
+            }
+        }
+        .sheet(isPresented: $showingEditSheet) {
+            if let card = currentCard {
+                EditCardView(card: card) { word, definition, wordType, abbreviation in
+                    updateCard(card, word: word, definition: definition, wordType: wordType, abbreviation: abbreviation)
+                }
             }
         }
     }
@@ -138,13 +146,21 @@ struct ContentView: View {
     }
     
     private var actionButtons: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 16) {
             Button {
                 showingAddSheet = true
             } label: {
                 Label("Add", systemImage: "plus")
             }
             .buttonStyle(.borderedProminent)
+            
+            Button {
+                showingEditSheet = true
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .buttonStyle(.bordered)
+            .disabled(cards.isEmpty)
             
             Button(role: .destructive) {
                 deleteCurrentCard()
@@ -177,6 +193,14 @@ struct ContentView: View {
         )
         modelContext.insert(newCard)
         currentIndex = cards.count
+        isFlipped = false
+    }
+    
+    private func updateCard(_ card: Flashcard, word: String, definition: String, wordType: String?, abbreviation: String?) {
+        card.word = word
+        card.definition = definition
+        card.wordType = wordType
+        card.wordTypeAbbreviation = abbreviation
         isFlipped = false
     }
     
