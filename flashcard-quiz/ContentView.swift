@@ -34,13 +34,13 @@ struct ContentView: View {
         }
         .padding()
         .sheet(isPresented: $showingAddSheet) {
-            AddCardView { word, definition, wordType, abbreviation in
+            CardFormView { word, definition, wordType, abbreviation in
                 addCard(word: word, definition: definition, wordType: wordType, abbreviation: abbreviation)
             }
         }
         .sheet(isPresented: $showingEditSheet) {
             if let card = currentCard {
-                EditCardView(card: card) { word, definition, wordType, abbreviation in
+                CardFormView(card: card) { word, definition, wordType, abbreviation in
                     updateCard(card, word: word, definition: definition, wordType: wordType, abbreviation: abbreviation)
                 }
             }

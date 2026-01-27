@@ -1,5 +1,5 @@
 //
-//  EditCardView.swift
+//  CardFormView.swift
 //  flashcard-quiz
 //
 //  Created by khoasdyn on 27/1/26.
@@ -7,10 +7,11 @@
 
 import SwiftUI
 
-struct EditCardView: View {
+struct CardFormView: View {
     @Environment(\.dismiss) private var dismiss
     
-    let card: Flashcard
+    let card: Flashcard?
+    var onSave: (String, String, String?, String?) -> Void
     
     @State private var word: String
     @State private var definition: String
@@ -19,15 +20,15 @@ struct EditCardView: View {
     @State private var definitionGenerator = DefinitionGenerator()
     @State private var wordTypeGenerator = WordTypeGenerator()
     
-    var onSave: (String, String, String?, String?) -> Void
+    private var isEditing: Bool { card != nil }
     
-    init(card: Flashcard, onSave: @escaping (String, String, String?, String?) -> Void) {
+    init(card: Flashcard? = nil, onSave: @escaping (String, String, String?, String?) -> Void) {
         self.card = card
         self.onSave = onSave
-        _word = State(initialValue: card.word)
-        _definition = State(initialValue: card.definition)
-        _wordType = State(initialValue: card.wordType)
-        _wordTypeAbbreviation = State(initialValue: card.wordTypeAbbreviation)
+        _word = State(initialValue: card?.word ?? "")
+        _definition = State(initialValue: card?.definition ?? "")
+        _wordType = State(initialValue: card?.wordType)
+        _wordTypeAbbreviation = State(initialValue: card?.wordTypeAbbreviation)
     }
     
     private var trimmedWord: String { word.trimmingCharacters(in: .whitespaces) }
@@ -43,7 +44,7 @@ struct EditCardView: View {
                 wordTypeBadgeSection
                 definitionSection
             }
-            .navigationTitle("Edit Card")
+            .navigationTitle(isEditing ? "Edit Card" : "New Card")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -134,7 +135,7 @@ struct EditCardView: View {
         } header: {
             Text("Definition")
         } footer: {
-            Text("Edit manually or regenerate with AI.")
+            Text(isEditing ? "Edit manually or regenerate with AI." : "Type a definition manually or use AI to generate one.")
         }
     }
     
@@ -173,10 +174,16 @@ struct EditCardView: View {
     }
 }
 
-#Preview {
-    EditCardView(
-        card: Flashcard(word: "Ephemeral", definition: "Lasting for a short time")
+#Preview("Add") {
+    CardFormView { word, definition, wordType, abbreviation in
+        print("Added: \(word)")
+    }
+}
+
+#Preview("Edit") {
+    CardFormView(
+        card: Flashcard(word: "Ephemeral", definition: "Lasting for a short time", wordType: "adjective", wordTypeAbbreviation: "adj")
     ) { word, definition, wordType, abbreviation in
-        print("Saved: \(word) - \(definition)")
+        print("Edited: \(word)")
     }
 }

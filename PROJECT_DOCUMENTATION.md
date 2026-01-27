@@ -18,8 +18,7 @@ flashcard-quiz/
 │   └── GeneratedWordType.swift   # FoundationModels schema for word classification
 ├── Views/
 │   ├── FlashcardView.swift       # Animated flip card component
-│   ├── AddCardView.swift         # Card creation sheet with AI generation
-│   └── EditCardView.swift        # Card editing sheet with AI regeneration
+│   └── CardFormView.swift        # Unified add/edit sheet with AI generation
 ├── Services/
 │   ├── DefinitionGenerator.swift # AI definition generator
 │   └── WordTypeGenerator.swift   # AI word type classifier
@@ -46,7 +45,6 @@ struct FlashcardView: View, Animatable {
         set { rotation = newValue }
     }
     
-    // Content switches exactly when rotation crosses 90 degrees
     private var showingFront: Bool { rotation < 90 }
     
     init(card: Flashcard, isFlipped: Bool) {
@@ -73,14 +71,14 @@ private var backSide: some View {
     RoundedRectangle(cornerRadius: 16)
         .fill(.blue.gradient)
         .overlay { Text(card.definition) }
-        .rotation3DEffect(.degrees(180), axis: (0, 1, 0)) // Counter-rotation
+        .rotation3DEffect(.degrees(180), axis: (0, 1, 0))
         .opacity(showingFront ? 0 : 1)
 }
 ```
 
 ### 3. SwiftData persistence
 
-**Model**: Use `@Model` macro on a class (not struct). Optional properties store word type classification.
+**Model**: Use `@Model` macro on a class. Optional properties store word type classification.
 
 ```swift
 @Model
@@ -115,34 +113,6 @@ struct flashcard_quizApp: App {
 }
 ```
 
-**View usage**: Query and modify via environment.
-
-```swift
-@Environment(\.modelContext) private var modelContext
-@Query(sort: \Flashcard.createdAt) private var cards: [Flashcard]
-
-func addCard(word: String, definition: String, wordType: String?, abbreviation: String?) {
-    let newCard = Flashcard(
-        word: word,
-        definition: definition,
-        wordType: wordType,
-        wordTypeAbbreviation: abbreviation
-    )
-    modelContext.insert(newCard)
-}
-
-func updateCard(_ card: Flashcard, word: String, definition: String, wordType: String?, abbreviation: String?) {
-    card.word = word
-    card.definition = definition
-    card.wordType = wordType
-    card.wordTypeAbbreviation = abbreviation
-}
-
-func deleteCard(_ card: Flashcard) {
-    modelContext.delete(card)
-}
-```
-
 ### 4. FoundationModels AI generation
 
 **Schema**: Define output structure with `@Generable` and guide the AI with `@Guide`.
@@ -161,176 +131,74 @@ extension GeneratedDefinition {
 }
 ```
 
-**Generator**: Use `@Observable` class with `LanguageModelSession`.
+**Generator**: Use `@Observable` class with `LanguageModelSession`. Use `streamResponse` for long outputs (definitions) so users see incremental progress. Use `respond` for short outputs (word type) since the full response arrives quickly.
+
+### 5. Unified form view for add and edit
+
+A single `CardFormView` handles both creating new cards and editing existing ones. The difference is whether a card is passed to the initializer.
 
 ```swift
-@Observable
-@MainActor
-final class DefinitionGenerator {
-    private(set) var generatedDefinition: String?
-    private(set) var isGenerating = false
-    var error: Error?
-    
-    private var session: LanguageModelSession
-    
-    init() {
-        let instructions = Instructions {
-            "You are a helpful vocabulary assistant."
-            "Provide clear, beginner-friendly definitions in exactly 2 sentences."
-        }
-        self.session = LanguageModelSession(tools: [], instructions: instructions)
-    }
-    
-    func generateDefinition(for word: String) async {
-        isGenerating = true
-        defer { isGenerating = false }
-        
-        do {
-            let prompt = Prompt {
-                "Define the word '\(word)' in simple language."
-                GeneratedDefinition.example
-            }
-            
-            let stream = session.streamResponse(
-                to: prompt,
-                generating: GeneratedDefinition.self,
-                includeSchemaInPrompt: false
-            )
-            
-            for try await partialResponse in stream {
-                if let definition = partialResponse.content.definition {
-                    generatedDefinition = definition
-                }
-            }
-        } catch {
-            self.error = error
-        }
-    }
-    
-    func prewarm() {
-        session.prewarm()
-    }
-}
-```
-
-### 5. Word type classification with FoundationModels
-
-**Schema**: A separate `@Generable` struct for classifying words into grammatical categories.
-
-```swift
-@Generable
-struct GeneratedWordType {
-    @Guide(description: "The grammatical category of the word. Must be exactly one of: noun, verb, adjective, adverb, preposition, conjunction, pronoun, interjection, determiner, or phrase")
-    let wordType: String
-    
-    @Guide(description: "A 1-3 letter abbreviation of the word type. Use standard abbreviations: n (noun), v (verb), adj (adjective), adv (adverb), prep (preposition), conj (conjunction), pron (pronoun), interj (interjection), det (determiner), phr (phrase)")
-    let abbreviation: String
-}
-
-extension GeneratedWordType {
-    static let nounExample = GeneratedWordType(wordType: "noun", abbreviation: "n")
-    static let verbExample = GeneratedWordType(wordType: "verb", abbreviation: "v")
-    static let adjectiveExample = GeneratedWordType(wordType: "adjective", abbreviation: "adj")
-}
-```
-
-**Generator**: Uses non-streaming `respond` method for quick classification. Since word type is short, streaming is unnecessary.
-
-```swift
-@Observable
-@MainActor
-final class WordTypeGenerator {
-    private(set) var generatedWordType: GeneratedWordType?
-    private(set) var isGenerating = false
-    var error: Error?
-    
-    private var session: LanguageModelSession
-    
-    init() {
-        let instructions = Instructions {
-            "You are a grammar expert."
-            "Classify words into their grammatical categories."
-        }
-        self.session = LanguageModelSession(tools: [], instructions: instructions)
-    }
-    
-    func generateWordType(for word: String) async {
-        generatedWordType = nil
-        isGenerating = true
-        defer { isGenerating = false }
-        
-        do {
-            let prompt = Prompt {
-                "What is the grammatical word type of '\(word)'?"
-                "Examples:"
-                GeneratedWordType.nounExample
-                GeneratedWordType.verbExample
-                GeneratedWordType.adjectiveExample
-            }
-            
-            let response = try await session.respond(
-                to: prompt,
-                generating: GeneratedWordType.self,
-                includeSchemaInPrompt: false
-            )
-            
-            generatedWordType = response.content
-        } catch {
-            self.error = error
-        }
-    }
-}
-```
-
-**Streaming vs Non-streaming**: Use `streamResponse` when output is long (definitions) so users see incremental progress. Use `respond` when output is short (word type) since the full response arrives quickly anyway.
-
-### 6. Running multiple async tasks in parallel
-
-In AddCardView and EditCardView, the generate button triggers both definition and word type generation simultaneously using Swift's structured concurrency.
-
-```swift
-Button {
-    Task {
-        async let definitionTask: () = generateDefinition()
-        async let wordTypeTask: () = generateWordType()
-        _ = await (definitionTask, wordTypeTask)
-    }
-} label: {
-    // ...
-}
-```
-
-The `async let` syntax starts both tasks immediately without waiting. The `await` on the tuple ensures both complete before continuing. This is faster than sequential execution since both AI requests run in parallel.
-
-### 7. Initializing State from external data
-
-EditCardView receives a Flashcard and must pre-populate its form fields. Use `State(initialValue:)` in the initializer to set up @State properties from the card's existing values.
-
-```swift
-struct EditCardView: View {
-    let card: Flashcard
+struct CardFormView: View {
+    let card: Flashcard?
+    var onSave: (String, String, String?, String?) -> Void
     
     @State private var word: String
     @State private var definition: String
     @State private var wordType: String?
     @State private var wordTypeAbbreviation: String?
     
-    init(card: Flashcard, onSave: @escaping (String, String, String?, String?) -> Void) {
+    private var isEditing: Bool { card != nil }
+    
+    init(card: Flashcard? = nil, onSave: @escaping (String, String, String?, String?) -> Void) {
         self.card = card
         self.onSave = onSave
-        _word = State(initialValue: card.word)
-        _definition = State(initialValue: card.definition)
-        _wordType = State(initialValue: card.wordType)
-        _wordTypeAbbreviation = State(initialValue: card.wordTypeAbbreviation)
+        _word = State(initialValue: card?.word ?? "")
+        _definition = State(initialValue: card?.definition ?? "")
+        _wordType = State(initialValue: card?.wordType)
+        _wordTypeAbbreviation = State(initialValue: card?.wordTypeAbbreviation)
     }
 }
 ```
 
-The underscore prefix (`_word`) accesses the State wrapper itself rather than its wrapped value, allowing you to initialize it with a starting value. This pattern is necessary because @State properties cannot be assigned directly in an initializer.
+The `isEditing` computed property checks if a card was provided. This controls the navigation title ("New Card" vs "Edit Card") and footer text. The `State(initialValue:)` pattern uses optional chaining with nil coalescing to handle both cases: when editing, fields are pre-populated from the card; when adding, fields start empty.
 
-### 8. Displaying persisted word type with fallback
+**Usage in ContentView**:
 
-In ContentView, the badge displays the stored word type from the Flashcard model. Cards created before word type classification was added show "N/A" instead.
+```swift
+// Add new card (no card parameter)
+.sheet(isPresented: $showingAddSheet) {
+    CardFormView { word, definition, wordType, abbreviation in
+        addCard(...)
+    }
+}
+
+// Edit existing card (pass current card)
+.sheet(isPresented: $showingEditSheet) {
+    if let card = currentCard {
+        CardFormView(card: card) { word, definition, wordType, abbreviation in
+            updateCard(card, ...)
+        }
+    }
+}
+```
+
+### 6. Running multiple async tasks in parallel
+
+The generate button triggers both definition and word type generation simultaneously.
+
+```swift
+Task {
+    async let definitionTask: () = generateDefinition()
+    async let wordTypeTask: () = generateWordType()
+    _ = await (definitionTask, wordTypeTask)
+}
+```
+
+The `async let` syntax starts both tasks immediately without waiting. The `await` on the tuple ensures both complete before continuing.
+
+### 7. Displaying persisted word type with fallback
+
+Cards without classification show "N/A" badge.
 
 ```swift
 @ViewBuilder
@@ -339,50 +207,31 @@ private var wordTypeBadge: some View {
         HStack {
             if let abbreviation = card.wordTypeAbbreviation, let wordType = card.wordType {
                 Text(abbreviation.uppercased())
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(badgeColor(for: wordType), in: Capsule())
+                    // ... colored badge
             } else {
                 Text("N/A")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.gray.opacity(0.2), in: Capsule())
+                    // ... gray badge
             }
         }
-        .frame(maxWidth: .infinity)
     }
 }
 ```
 
-### 9. View ID for state reset
+### 8. View ID for state reset
 
-When navigating between cards, use `.id()` modifier to force view recreation. This resets the FlashcardView animation state.
+Use `.id()` modifier to force view recreation when navigating between cards.
 
 ```swift
 FlashcardView(card: card, isFlipped: isFlipped)
-    .id(card.id) // Forces new view instance when card changes
+    .id(card.id)
 ```
 
-### 10. Static dimensions for consistency
-
-Define card dimensions as static constants to share between FlashcardView and empty state.
+### 9. Static dimensions for consistency
 
 ```swift
 struct FlashcardView: View, Animatable {
     static let cardWidth: CGFloat = 340
-    static let cardHeight: CGFloat = 240
-}
-
-// In ContentView
-private var emptyState: some View {
-    RoundedRectangle(cornerRadius: 16)
-        .frame(width: FlashcardView.cardWidth, height: FlashcardView.cardHeight)
+    static let cardHeight: CGFloat = 400
 }
 ```
 
