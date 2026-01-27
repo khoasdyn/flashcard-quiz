@@ -10,7 +10,7 @@ import SwiftUI
 struct FlashcardView: View, Animatable {
     
     static let cardWidth: CGFloat = 340
-    static let cardHeight: CGFloat = 240
+    static let cardHeight: CGFloat = 400
     
     let card: Flashcard
     var rotation: Double

@@ -27,13 +27,14 @@ struct ContentView: View {
         VStack(spacing: 24) {
             cardCounter
             cardDisplay
+            wordTypeBadge
             navigationButtons
             actionButtons
         }
         .padding()
         .sheet(isPresented: $showingAddSheet) {
-            AddCardView { word, definition in
-                addCard(word: word, definition: definition)
+            AddCardView { word, definition, wordType, abbreviation in
+                addCard(word: word, definition: definition, wordType: wordType, abbreviation: abbreviation)
             }
         }
     }
@@ -61,6 +62,48 @@ struct ContentView: View {
                 }
         } else {
             emptyState
+        }
+    }
+    
+    @ViewBuilder
+    private var wordTypeBadge: some View {
+        if let card = currentCard {
+            HStack {
+                if let abbreviation = card.wordTypeAbbreviation, let wordType = card.wordType {
+                    Text(abbreviation.uppercased())
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(badgeColor(for: wordType), in: Capsule())
+                } else {
+                    Text("N/A")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.gray.opacity(0.2), in: Capsule())
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+    
+    private func badgeColor(for wordType: String) -> Color {
+        switch wordType.lowercased() {
+        case "noun": return .blue
+        case "verb": return .green
+        case "adjective": return .orange
+        case "adverb": return .purple
+        case "preposition": return .pink
+        case "conjunction": return .cyan
+        case "pronoun": return .indigo
+        case "interjection": return .red
+        case "determiner": return .mint
+        case "phrase": return .teal
+        default: return .gray
         }
     }
     
@@ -125,8 +168,13 @@ struct ContentView: View {
         currentIndex += 1
     }
     
-    private func addCard(word: String, definition: String) {
-        let newCard = Flashcard(word: word, definition: definition)
+    private func addCard(word: String, definition: String, wordType: String?, abbreviation: String?) {
+        let newCard = Flashcard(
+            word: word,
+            definition: definition,
+            wordType: wordType,
+            wordTypeAbbreviation: abbreviation
+        )
         modelContext.insert(newCard)
         currentIndex = cards.count
         isFlipped = false
