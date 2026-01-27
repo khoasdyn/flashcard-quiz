@@ -6,7 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2F7F78602F28BB09001D2AAD /* PROJECT_DOCUMENTATION.md in Resources */ = {isa = PBXBuildFile; fileRef = 2F7F785E2F28BB09001D2AAD /* PROJECT_DOCUMENTATION.md */; };
+		2F7F78612F28BB09001D2AAD /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 2F7F785F2F28BB09001D2AAD /* README.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		2F7F785E2F28BB09001D2AAD /* PROJECT_DOCUMENTATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROJECT_DOCUMENTATION.md; sourceTree = "<group>"; };
+		2F7F785F2F28BB09001D2AAD /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		2F9F6BF32F266BE3009E2C6B /* flashcard-quiz.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "flashcard-quiz.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -32,6 +39,8 @@
 		2F9F6BEA2F266BE3009E2C6B = {
 			isa = PBXGroup;
 			children = (
+				2F7F785E2F28BB09001D2AAD /* PROJECT_DOCUMENTATION.md */,
+				2F7F785F2F28BB09001D2AAD /* README.md */,
 				2F9F6BF52F266BE3009E2C6B /* flashcard-quiz */,
 				2F9F6BF42F266BE3009E2C6B /* Products */,
 			);
@@ -109,6 +118,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2F7F78602F28BB09001D2AAD /* PROJECT_DOCUMENTATION.md in Resources */,
+				2F7F78612F28BB09001D2AAD /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
