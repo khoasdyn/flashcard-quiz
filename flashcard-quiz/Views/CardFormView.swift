@@ -32,56 +32,76 @@ struct CardFormView: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Word") {
-                    TextField("Enter a word", text: $word)
-                }
-                
-                if generator.isGenerating || wordType != nil {
-                    Section {
-                        HStack {
-                            Spacer()
-                            if generator.isGenerating {
+            VStack(spacing: 0) {
+                Form {
+                    Section("Word") {
+                        TextField("Enter a word", text: $word)
+                    }
+                    
+                    Section("Word Type") {
+                        Picker("Select type", selection: $wordType) {
+                            Text("None").tag(WordType?.none)
+                            ForEach(WordType.allCases, id: \.self) { type in
+                                Text(type.rawValue.capitalized).tag(WordType?.some(type))
+                            }
+                        }
+                        
+                        if let wordType {
+                            HStack {
+                                Spacer()
+                                WordTypeBadge(wordType: wordType)
+                                Spacer()
+                            }
+                        }
+                    }
+                    
+                    Section("Definition") {
+                        TextField("Definition", text: $definition, axis: .vertical)
+                            .lineLimit(3...6)
+                        
+                        if generator.isGenerating {
+                            HStack {
+                                Spacer()
                                 ProgressView()
                                     .controlSize(.small)
                                 Text("Generating...")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
-                            } else {
-                                WordTypeBadge(wordType: wordType)
+                                Spacer()
                             }
-                            Spacer()
+                        }
+                        
+                        if let error = generator.error {
+                            Text(error.localizedDescription)
+                                .font(.caption)
+                                .foregroundStyle(.red)
                         }
                     }
                 }
                 
-                Section("Definition") {
-                    TextField("Definition", text: $definition, axis: .vertical)
-                        .lineLimit(3...6)
-                    
-                    Button {
-                        Task {
-                            await generator.generate(for: word.trimmingCharacters(in: .whitespaces))
-                            if let result = generator.result {
-                                definition = result.definition
-                                wordType = WordType(rawValue: result.wordType)
-                            }
+                Button {
+                    Task {
+                        await generator.generate(for: word.trimmingCharacters(in: .whitespaces))
+                        if let result = generator.result {
+                            definition = result.definition
+                            wordType = WordType(rawValue: result.wordType)
                         }
-                    } label: {
-                        HStack {
-                            Image(systemName: "sparkles")
-                            Text(generator.isGenerating ? "Generating..." : "AI Generate")
-                        }
-                        .frame(maxWidth: .infinity)
                     }
-                    .disabled(!canGenerate)
-                    
-                    if let error = generator.error {
-                        Text(error.localizedDescription)
-                            .font(.caption)
-                            .foregroundStyle(.red)
+                } label: {
+                    HStack {
+                        Image(systemName: "sparkles")
+                        Text(generator.isGenerating ? "Generating..." : "AI Generate")
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(.blue)
+                    .foregroundStyle(.white)
+                    .fontWeight(.semibold)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .disabled(!canGenerate)
+                .opacity(canGenerate ? 1 : 0.5)
+                .padding()
             }
             .navigationTitle(isEditing ? "Edit Card" : "New Card")
             .navigationBarTitleDisplayMode(.inline)
