@@ -12,32 +12,39 @@ A SwiftUI flashcard app with flip animations and AI-powered generation using Fou
 
 ```
 flashcard-quiz/
+├── ContentView.swift          # TabView container
 ├── Models/
-│   └── Flashcard.swift       # SwiftData model + WordType enum
+│   └── Flashcard.swift        # SwiftData model + WordType enum
 ├── Views/
-│   ├── FlashcardView.swift   # Animated flip card
-│   ├── CardFormView.swift    # Add/edit sheet
-│   └── WordTypeBadge.swift   # Reusable badge component
+│   ├── CardDetailView.swift   # Sheet for viewing card from list
+│   ├── CardFormView.swift     # Add/edit form with AI generation
+│   ├── CardRowView.swift      # List row component
+│   ├── FlashcardTabView.swift # Cards tab with flip animation
+│   ├── FlashcardView.swift    # Animated flip card
+│   ├── ListTabView.swift      # List tab with swipe actions
+│   └── WordTypeBadge.swift    # Reusable badge component
 ├── Services/
-│   └── AIGenerator.swift     # AI generator for definition + word type
-├── ContentView.swift         
-└── flashcard_quizApp.swift   
+│   └── AIGenerator.swift      # AI generator for definition + word type
+└── flashcard_quizApp.swift
 ```
 
 ## Features
 
+- Two view modes via TabView: flip card view and vertical list view
 - Tap card to flip with smooth 3D animation
-- Navigate between cards with arrow buttons
+- Navigate between cards with arrow buttons (Cards tab)
+- Swipe to edit or delete cards (List tab)
 - Add/edit cards with unified form
+- Manual word type selection via Picker dropdown
 - AI-generate definition and word type in one call
-- Colored word type badges (old cards show "N/A")
+- Colored word type badges
 - SwiftData persistence
 
 ## Key Techniques
 
 ### 1. Card flip animation with Animatable
 
-The card flip uses SwiftUI's `Animatable` protocol to create smooth mid-animation content switching. Without `Animatable`, opacity changes happen instantly when state changes, not during the animation. Exposing `rotation` as `animatableData` lets SwiftUI interpolate it frame-by-frame, and the content switches exactly when rotation crosses 90 degrees.
+The card flip uses SwiftUI's `Animatable` protocol to create smooth mid-animation content switching. Exposing `rotation` as `animatableData` lets SwiftUI interpolate it frame-by-frame, and the content switches exactly when rotation crosses 90 degrees.
 
 ```swift
 struct FlashcardView: View, Animatable {
@@ -66,11 +73,9 @@ struct FlashcardView: View, Animatable {
 }
 ```
 
-When `isFlipped` toggles, SwiftUI interpolates rotation (0 → 30 → 60 → 90 → 120 → 150 → 180), and at each frame `showingFront` recalculates to switch content at the right moment.
-
 ### 2. Back side counter-rotation
 
-The back side content appears mirrored without correction because the entire card rotates 180 degrees. Pre-rotating the back side 180 degrees cancels this out.
+The back side content appears mirrored without correction. Pre-rotating the back side 180 degrees cancels this out.
 
 ```swift
 private var backSide: some View {
@@ -98,40 +103,18 @@ class Flashcard {
         get { wordTypeRaw.flatMap { WordType(rawValue: $0) } }
         set { wordTypeRaw = newValue?.rawValue }
     }
-    
-    init(word: String, definition: String, wordType: WordType? = nil) {
-        self.word = word
-        self.definition = definition
-        self.createdAt = Date()
-        self.wordTypeRaw = wordType?.rawValue
-    }
 }
 
 enum WordType: String, CaseIterable {
     case noun, verb, adjective, adverb, preposition, conjunction, pronoun, interjection, determiner, phrase
     
-    var color: Color {
-        switch self {
-        case .noun: .blue
-        case .verb: .green
-        case .adjective: .orange
-        case .adverb: .purple
-        case .preposition: .pink
-        case .conjunction: .cyan
-        case .pronoun: .indigo
-        case .interjection: .red
-        case .determiner: .mint
-        case .phrase: .teal
-        }
-    }
+    var color: Color { ... }
 }
 ```
 
-The enum uses full word names as raw values ("noun", "verb", etc.), which matches what the AI generates and displays nicely with `.rawValue.capitalized`.
-
 ### 4. Single AI generator with FoundationModels
 
-One `@Generable` struct produces both definition and word type in a single API call, more efficient than separate requests.
+One `@Generable` struct produces both definition and word type in a single API call.
 
 ```swift
 @Generable
@@ -143,13 +126,6 @@ struct GeneratedCard {
     let wordType: String
 }
 
-extension GeneratedCard {
-    static let example = GeneratedCard(
-        definition: "Feeling good and joyful inside. People often smile when they are happy.",
-        wordType: "adjective"
-    )
-}
-
 @Observable
 @MainActor
 final class AIGenerator {
@@ -159,79 +135,27 @@ final class AIGenerator {
     
     private var session: LanguageModelSession
     
-    init() {
-        let instructions = Instructions {
-            "You are a vocabulary assistant."
-            "Provide clear, beginner-friendly definitions in 2 sentences."
-            "Classify words into their grammatical category."
-        }
-        self.session = LanguageModelSession(tools: [], instructions: instructions)
-    }
-    
-    func generate(for word: String) async {
-        result = nil
-        error = nil
-        isGenerating = true
-        defer { isGenerating = false }
-        
-        do {
-            let prompt = Prompt {
-                "Define and classify the word '\(word)'."
-                "Example:"
-                GeneratedCard.example
-            }
-            
-            let response = try await session.respond(
-                to: prompt,
-                generating: GeneratedCard.self,
-                includeSchemaInPrompt: false
-            )
-            
-            result = response.content
-        } catch {
-            self.error = error
-        }
-    }
-    
-    func prewarm() {
-        session.prewarm()
-    }
+    func generate(for word: String) async { ... }
+    func prewarm() { session.prewarm() }
 }
 ```
 
-### 5. Reusable WordTypeBadge
+### 5. Picker with optional binding
 
-Extract badge styling into a standalone component used by both ContentView and CardFormView. Cards without classification show "N/A".
+When binding a Picker to an optional type, tag values must match the selection type exactly using `WordType?.none` and `WordType?.some(type)`.
 
 ```swift
-struct WordTypeBadge: View {
-    let wordType: WordType?
-    
-    var body: some View {
-        if let wordType {
-            Text(wordType.rawValue.capitalized)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(wordType.color, in: Capsule())
-        } else {
-            Text("N/A")
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.gray.opacity(0.2), in: Capsule())
-        }
+Picker("Select type", selection: $wordType) {
+    Text("None").tag(WordType?.none)
+    ForEach(WordType.allCases, id: \.self) { type in
+        Text(type.rawValue.capitalized).tag(WordType?.some(type))
     }
 }
 ```
 
 ### 6. Unified CardFormView for add and edit
 
-A single view handles both creating new cards and editing existing ones. The difference is whether a card is passed to the initializer. Use `State(initialValue:)` to pre-populate fields from an existing card.
+A single view handles both creating new cards and editing existing ones using `State(initialValue:)` to pre-populate fields.
 
 ```swift
 struct CardFormView: View {
@@ -241,9 +165,6 @@ struct CardFormView: View {
     @State private var word: String
     @State private var definition: String
     @State private var wordType: WordType?
-    @State private var generator = AIGenerator()
-    
-    private var isEditing: Bool { card != nil }
     
     init(card: Flashcard? = nil, onSave: @escaping (String, String, WordType?) -> Void) {
         self.card = card
@@ -255,53 +176,57 @@ struct CardFormView: View {
 }
 ```
 
-Usage in ContentView:
+### 7. Sheet binding with item
+
+Use `.sheet(item:)` for sheets that need to pass data. The sheet dismisses when the binding is `nil` and presents when assigned a value.
 
 ```swift
-// Add new card (no card parameter)
-.sheet(isPresented: $showingAddSheet) {
-    CardFormView { word, definition, wordType in
-        let card = Flashcard(word: word, definition: definition, wordType: wordType)
-        modelContext.insert(card)
-    }
-}
+@State private var cardToEdit: Flashcard?
 
-// Edit existing card (pass current card)
-.sheet(isPresented: $showingEditSheet) {
-    if let card = currentCard {
-        CardFormView(card: card) { word, definition, wordType in
-            card.word = word
-            card.definition = definition
-            card.wordType = wordType
-        }
+.sheet(item: $cardToEdit) { card in
+    CardFormView(card: card) { word, definition, wordType in
+        card.word = word
+        card.definition = definition
+        card.wordType = wordType
     }
 }
 ```
 
-### 7. View ID for state reset
+### 8. TabView with iOS 18+ syntax
 
-Use `.id()` modifier to force view recreation when navigating between cards. This resets the FlashcardView animation state.
+The new `Tab` initializer provides a cleaner API than the older `.tabItem` modifier.
 
 ```swift
-FlashcardView(card: card, isFlipped: isFlipped)
-    .id(card.id)
+TabView {
+    Tab("Cards", systemImage: "rectangle.stack") {
+        FlashcardTabView()
+    }
+    
+    Tab("List", systemImage: "list.bullet") {
+        ListTabView()
+    }
+}
 ```
 
-### 8. Static dimensions for consistency
+### 9. Swipe actions in List
 
-Define card dimensions as static constants to share between FlashcardView and empty state placeholder.
+List rows support leading and trailing swipe actions with customizable tint colors.
 
 ```swift
-struct FlashcardView: View, Animatable {
-    static let cardWidth: CGFloat = 340
-    static let cardHeight: CGFloat = 400
+.swipeActions(edge: .trailing, allowsFullSwipe: true) {
+    Button(role: .destructive) {
+        modelContext.delete(card)
+    } label: {
+        Label("Delete", systemImage: "trash")
+    }
 }
-
-// In ContentView
-private var emptyState: some View {
-    RoundedRectangle(cornerRadius: 16)
-        .fill(.gray.opacity(0.2))
-        .frame(width: FlashcardView.cardWidth, height: FlashcardView.cardHeight)
+.swipeActions(edge: .leading) {
+    Button {
+        cardToEdit = card
+    } label: {
+        Label("Edit", systemImage: "pencil")
+    }
+    .tint(.orange)
 }
 ```
 
