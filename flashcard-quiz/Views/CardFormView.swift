@@ -82,7 +82,10 @@ struct CardFormView: View {
                     }
                 }
                 
-                Button {
+                AIGenerateButton(
+                    isGenerating: generator.isGenerating,
+                    canGenerate: canGenerate
+                ) {
                     Task {
                         await generator.generate(for: word.trimmingCharacters(in: .whitespaces))
                         if let result = generator.result {
@@ -90,21 +93,7 @@ struct CardFormView: View {
                             wordType = WordType(rawValue: result.wordType)
                         }
                     }
-                } label: {
-                    HStack {
-                        Image(systemName: "sparkles")
-                        Text(generator.isGenerating ? "Generating..." : "AI Generate")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(.blue)
-                    .foregroundStyle(.white)
-                    .fontWeight(.semibold)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .disabled(!canGenerate)
-                .opacity(canGenerate ? 1 : 0.5)
-                .padding()
             }
             .navigationTitle(isEditing ? "Edit Card" : "New Card")
             .navigationBarTitleDisplayMode(.inline)
