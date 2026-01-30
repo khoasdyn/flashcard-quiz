@@ -62,6 +62,7 @@ struct ListTabView: View {
                     }
                 }
             }
+            .ignoresSafeArea(.keyboard)
             .sheet(isPresented: $showingAddSheet) {
                 CardFormView { word, definition, wordType in
                     let card = Flashcard(word: word, definition: definition, wordType: wordType)
