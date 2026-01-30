@@ -2,30 +2,31 @@
 
 A SwiftUI flashcard app with flip animations and AI-powered generation using FoundationModels.
 
-## Tech Stack
+## Tech stack
 
-- **SwiftUI** - UI framework
-- **SwiftData** - Persistence
-- **FoundationModels** - On-device AI (iOS 26+)
+- **SwiftUI** for the UI framework
+- **SwiftData** for persistence
+- **FoundationModels** for on-device AI (iOS 26+)
 
-## Project Structure
+## Project structure
 
 ```
 flashcard-quiz/
-├── ContentView.swift          # TabView container
+├── ContentView.swift              # TabView container
 ├── Models/
-│   └── Flashcard.swift        # SwiftData model + WordType enum
+│   └── Flashcard.swift            # SwiftData model + WordType enum
 ├── Views/
-│   ├── CardDetailView.swift   # Sheet for viewing card from list
-│   ├── CardFormView.swift     # Add/edit form with AI generation
-│   ├── CardRowView.swift      # List row component
-│   ├── FlashcardTabView.swift # Cards tab with flip animation
-│   ├── FlashcardView.swift    # Animated flip card
-│   ├── ListTabView.swift      # List tab with swipe actions
-│   └── WordTypeBadge.swift    # Reusable badge component
+│   ├── AIGenerateButton.swift     # Extracted button with styling and state
+│   ├── CardDetailView.swift       # Sheet for viewing card from list
+│   ├── CardFormView.swift         # Add/edit form with AI generation
+│   ├── CardRowView.swift          # List row component
+│   ├── FlashcardTabView.swift     # Cards tab with flip animation
+│   ├── FlashcardView.swift        # Animated flip card
+│   ├── ListTabView.swift          # List tab with swipe actions
+│   └── WordTypeBadge.swift        # Reusable badge component
 ├── Services/
-│   └── AIGenerator.swift      # AI generator for definition + word type
-└── flashcard_quizApp.swift
+│   └── AIGenerator.swift          # AI generator for definition + word type
+└── flashcard_quizApp.swift        # App entry point
 ```
 
 ## Features
@@ -40,7 +41,7 @@ flashcard-quiz/
 - Colored word type badges
 - SwiftData persistence
 
-## Key Techniques
+## Key techniques
 
 ### 1. Card flip animation with Animatable
 
@@ -176,7 +177,41 @@ struct CardFormView: View {
 }
 ```
 
-### 7. Sheet binding with item
+### 7. Extracted AIGenerateButton component
+
+The AI generate button has substantial styling (frame, padding, background, clip shape) and state handling (generating state, disabled state). Extracting it into its own view keeps `CardFormView` focused on form logic while making the button reusable.
+
+```swift
+struct AIGenerateButton: View {
+    let isGenerating: Bool
+    let canGenerate: Bool
+    var onTap: () -> Void
+    
+    var body: some View {
+        Button {
+            onTap()
+        } label: {
+            HStack {
+                Image(systemName: "sparkles")
+                Text(isGenerating ? "Generating..." : "AI Generate")
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(.blue)
+            .foregroundStyle(.white)
+            .fontWeight(.semibold)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .disabled(!canGenerate)
+        .opacity(canGenerate ? 1 : 0.5)
+        .padding()
+    }
+}
+```
+
+The button accepts three parameters: `isGenerating` controls the label text, `canGenerate` controls enabled state and opacity, and `onTap` is the action closure. The async logic stays in the parent view because it updates `@State` properties that belong to `CardFormView`.
+
+### 8. Sheet binding with item
 
 Use `.sheet(item:)` for sheets that need to pass data. The sheet dismisses when the binding is `nil` and presents when assigned a value.
 
@@ -192,7 +227,7 @@ Use `.sheet(item:)` for sheets that need to pass data. The sheet dismisses when 
 }
 ```
 
-### 8. TabView with iOS 18+ syntax
+### 9. TabView with iOS 18+ syntax
 
 The new `Tab` initializer provides a cleaner API than the older `.tabItem` modifier.
 
@@ -208,7 +243,7 @@ TabView {
 }
 ```
 
-### 9. Swipe actions in List
+### 10. Swipe actions in List
 
 List rows support leading and trailing swipe actions with customizable tint colors.
 
@@ -229,6 +264,35 @@ List rows support leading and trailing swipe actions with customizable tint colo
     .tint(.orange)
 }
 ```
+
+### 11. Keyboard avoidance for sheets
+
+SwiftUI's automatic keyboard avoidance operates at the window level, not the view level. When a keyboard appears in a sheet, the safe area change propagates to all views in the window, including the content behind the sheet overlay.
+
+To prevent the underlying view from shifting when the sheet's keyboard appears, apply `.ignoresSafeArea(.keyboard)` to the view that presents the sheet.
+
+```swift
+// In FlashcardTabView
+VStack(spacing: 24) {
+    // content
+}
+.padding()
+.ignoresSafeArea(.keyboard)
+.sheet(isPresented: $showingAddSheet) {
+    CardFormView { ... }
+}
+
+// In ListTabView
+NavigationStack {
+    // content
+}
+.ignoresSafeArea(.keyboard)
+.sheet(isPresented: $showingAddSheet) {
+    CardFormView { ... }
+}
+```
+
+This modifier tells the presenting view to ignore keyboard-related safe area changes while allowing the sheet itself to handle keyboard avoidance normally.
 
 ## Requirements
 
