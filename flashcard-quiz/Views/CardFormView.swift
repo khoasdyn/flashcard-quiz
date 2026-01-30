@@ -18,6 +18,8 @@ struct CardFormView: View {
     @State private var wordType: WordType?
     @State private var generator = AIGenerator()
     
+    @FocusState private var isWordFieldFocused: Bool
+    
     private var isEditing: Bool { card != nil }
     private var canSave: Bool { !word.trimmingCharacters(in: .whitespaces).isEmpty && !definition.trimmingCharacters(in: .whitespaces).isEmpty }
     private var canGenerate: Bool { !word.trimmingCharacters(in: .whitespaces).isEmpty && !generator.isGenerating }
@@ -36,6 +38,7 @@ struct CardFormView: View {
                 Form {
                     Section("Word") {
                         TextField("Enter a word", text: $word)
+                            .focused($isWordFieldFocused)
                     }
                     
                     Section("Word Type") {
@@ -123,6 +126,12 @@ struct CardFormView: View {
             }
             .onAppear {
                 generator.prewarm()
+                
+                // Auto-focus the word field only when adding a new card,
+                // not when editing an existing one
+                if !isEditing {
+                    isWordFieldFocused = true
+                }
             }
         }
     }
